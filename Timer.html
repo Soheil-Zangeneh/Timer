@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User-Set Timer</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+        #name-input, #timer-input, #timer-display {
+            font-size: 18px;
+            margin-bottom: 10px;
+        }
+        #progress-bar-container {
+            width: 50%;
+            margin: 20px auto;
+        }
+        #progress-bar {
+            width: 100%;
+            height: 30px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #progress-fill {
+            height: 100%;
+            background-color: #4caf50;
+            transition: width 1s linear;
+        }
+        #task-table {
+            width: 50%;
+            margin: 20px auto;
+            border-collapse: collapse;
+        }
+        #task-table th, #task-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        #export-btn {
+            margin-top: 20px;
+            padding: 10px;
+            cursor: pointer;
+            background-color: #4caf50;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <label for="name-input">Enter task name:</label>
+    <input type="text" id="name-input" placeholder="Task Name">
+
+    <label for="timer-input">Set timer (minutes):</label>
+    <input type="number" id="timer-input" placeholder="Enter minutes">
+
+    <button onclick="startTimer()">Start Timer</button>
+    <button onclick="stopTimer()">Stop Timer</button>
+
+    <div id="timer-display"></div>
+
+    <div id="progress-bar-container">
+        <div id="progress-bar">
+            <div id="progress-fill"></div>
+        </div>
+    </div>
+
+    <table id="task-table">
+        <thead>
+            <tr>
+                <th>Task Name</th>
+                <th>Spent Time</th>
+                <th>Date/Time Ended</th>
+            </tr>
+        </thead>
+        <tbody id="task-list"></tbody>
+    </table>
+
+    <button id="export-btn" onclick="exportToCSV()">Export to CSV</button>
+
+    <script>
+        let countdown;
+        let startTime;
+        let elapsedTime = 0;
+        let isTimerRunning = false;
+
+        function startTimer() {
+            if (isTimerRunning) {
+                alert("Timer is already running.");
+                return;
+            }
+
+            const nameInput = document.getElementById('name-input');
+            const timerInput = document.getElementById('timer-input');
+            const timerDisplay = document.getElementById('timer-display');
+            const progressBar = document.getElementById('progress-fill');
+            const taskList = document.getElementById('task-list');
+
+            const name = nameInput.value.trim();
+            const minutes = parseInt(timerInput.value, 10);
+
+            if (name === '') {
+                alert("Please enter task name.");
+                return;
+            }
+
+            if (isNaN(minutes) || minutes <= 0) {
+                alert("Please enter a valid positive number of minutes.");
+                return;
+            }
+
+            clearInterval(countdown);
+            startTime = new Date();
+            isTimerRunning = true;
+
+            countdown = setInterval(function() {
+                const currentTime = new Date();
+                elapsedTime = Math.floor((currentTime - startTime) / 1000);
+
+                if (elapsedTime >= minutes * 60) {
+                    isTimerRunning = false;
+                    timerDisplay.innerText = `${name}, Time's up!`;
+                    recordTask(name, minutes);
+                    clearInterval(countdown);  // Clear the interval after updating the display and progress bar
+                } else {
+                    const displayMinutes = Math.floor(elapsedTime / 60);
+                    const displaySeconds = elapsedTime % 60;
+                    timerDisplay.innerText = `${name}, Time Spent: ${displayMinutes}:${displaySeconds < 10 ? '0' : ''}${displaySeconds}`;
+
+                    const progress = (elapsedTime / (minutes * 60)) * 100;
+                    progressBar.style.width = progress + '%';
+
+                    // Update title with the timer display
+                    document.title = `${name} - ${displayMinutes}:${displaySeconds}`;
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (!isTimerRunning) {
+                alert("Timer is not running.");
+                return;
+            }
+
+            clearInterval(countdown);
+            isTimerRunning = false;
+            document.title = "User-Set Timer";
+            recordTask(document.getElementById('name-input').value.trim(), elapsedTime / 60);
+        }
+
+        function recordTask(name, spentTimeInMinutes) {
+            const taskList = document.getElementById('task-list');
+            const newRow = taskList.insertRow();
+            const cell1 = newRow.insertCell(0);
+            const cell2 = newRow.insertCell(1);
+            const cell3 = newRow.insertCell(2);
+
+            const date = new Date();
+            const formattedDate = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+
+            cell1.innerHTML = name;
+            cell2.innerHTML = `${Math.floor(spentTimeInMinutes)} min ${Math.round((spentTimeInMinutes % 1) * 60)} sec`;
+            cell3.innerHTML = formattedDate;
+        }
+
+        function exportToCSV() {
+            const taskTable = document.getElementById('task-table');
+            const rows = taskTable.querySelectorAll('tr');
+            const csvContent = [];
+
+            // Header
+            const header = Array.from(rows[0].querySelectorAll('th')).map(cell => cell.textContent);
+            csvContent.push(header.join(','));
+
+            // Rows
+            for (let i = 1; i < rows.length; i++) {
+                const row = Array.from(rows[i].querySelectorAll('td')).map(cell => cell.textContent);
+                csvContent.push(row.join(','));
+            }
+
+            // Create CSV file
+            const csvString = csvContent.join('\n');
+            const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.setAttribute('download', 'task_data.csv');
+            link.click();
+        }
+    </script>
+</body>
+</html>
